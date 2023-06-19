@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<meta charset="utf-8" />
+<html>
+  <head>
+  
+     <style type="text/css"> 
+        svg {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        } 
+        canvas {
+        position:absolute;
+        top:0;
+        left:0;
+        width:100%;
+        height:100%;
+        z-index:-1;
+        }    
+        
+        
+    .main_container {
+    padding: 0;
+    font-size: 14px;
+    width: 100%;
+    height: 560px;
+    }
+    .main_container .menu_container{
+    border: solid 1px #C7CADD;
+    margin: 0px 3px 3px 0px;
+    padding: 0px 0px 0px 0px;
+    float: right;
+    height: 100%;
+    width: 10%;
+    }    
+        
+
+    .main_container .menu_container .color_button_1 {
+    margin: 0px 20px 20px 0px;
+    padding: 0px 0px 0px 0px;
+    width: 100%;
+    height: 50px;
+    font-size: 14px;
+    -webkit-border-radius: 25px;
+    -moz-border-radius: 25px;
+    border-radius: 25px;
+    background: red;
+    text-indent: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    }
+
+    .main_container .menu_container .color_button_2 {
+    margin: 0px 20px 20px 0px;
+    padding: 0px 0px 0px 0px;
+    width: 100%;
+    height: 50px;
+    font-size: 14px;
+    -webkit-border-radius: 25px;
+    -moz-border-radius: 25px;
+    border-radius: 25px;
+    background: yellow;
+    text-indent: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    }
+    
+    .main_container .menu_container .color_button_3 {
+    margin: 0px 20px 20px 0px;
+    padding: 0px 0px 0px 0px;
+    width: 100%;
+    height: 50px;
+    font-size: 14px;
+    -webkit-border-radius: 25px;
+    -moz-border-radius: 25px;
+    border-radius: 25px;
+    background: blue;
+    text-indent: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    }
+
+    .wrapper_color_button {
+      position: relative;
+      top: 50%;
+      margin-top: -135px;
+    }
+        
+        
+    </style>
+
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+    <script src="{{ static('js/svg-pan-zoom.js') }}"></script>
+    <script src="{{ static('js/hammer.js') }}"></script>
+    <script language="javascript" type="text/javascript">
+    
+    function pad(sNum, size) {
+        var sNum = sNum + "";
+        while (sNum.length < size) sNum = "0" + sNum;
+        return sNum;
+    }
+
+     function FillTableCell(sSvgId, sColor){
+        var freqSecs = 0.01;
+        var inout = (freqSecs * 1000)/0.5;
+        $('#' + sSvgId).fadeOut(inout, function() {$('#' + sSvgId).css('fill', sColor)} ).fadeIn(inout);
+     
+    }
+
+     function AnimateForbiddenSvg(sSvgId){
+        var freqSecs = 0.05;
+        var inout = (freqSecs * 1000)/0.5;
+        var svgfill = $('#' + sSvgId).css("fill");
+        if (svgfill != 'rgb(0, 0, 0)'){
+            console.log(svgfill);
+            $('#' + sSvgId).fadeOut(inout, function() {$('#' + sSvgId).css('fill', 'black')} ).fadeIn(inout).fadeOut(inout, function() {$('#' + sSvgId).css('fill', svgfill)} ).fadeIn(inout, function() {$('#' + sSvgId).css('fill', svgfill)} );
+        }
+    }
+    
+     function UpdateHighscore(sHighscore){
+        sHighscore = pad(sHighscore, 5);
+        sHighscore = 'Highscore: ' + sHighscore 
+        $('.Highscore').text(sHighscore);
+    }
+
+     $(function() {
+       var conn = null;
+       var sColorId = "0";
+
+    $(document).ready(function() {
+    
+    var wrapper_color_button = $(".wrapper_color_button > *");
+    wrapper_color_button.on("click", function() {
+        $(this).css('border', 'solid 2px #111111').siblings('').css('border', 'solid 0px');
+        $(this).css('height', '50px').siblings('').css('height', '40px');
+        sColorId = $(this).text();
+    });
+    $('.wrapper_color_button > *:first').click();
+    
+    var SvgMap = $("svg.map > *");
+    SvgMap.on("click", function() {
+     JsonForSend = {'SvgId' : $(this).attr("id"), 'color' : sColorId};
+     conn.send(JSON.stringify(JsonForSend));
+    });
+
+    });
+
+       
+       function connect() {
+         //disconnect();
+         var wsUri = (window.location.protocol=='https:'&&'wss://'||'ws://')+window.location.host;
+         conn = new WebSocket(wsUri);
+         //log('Connecting...');
+         
+         conn.onopen = function() {
+           //log('Connected.');
+           //update_ui();
+         };
+         
+         conn.onmessage = function(e) {
+           var data = JSON.parse(e.data);
+           switch (data.action) {
+             case  'connect':
+               //name = data.name;
+               //log('Connected as ' + name);
+               //update_ui();
+               break;
+             case  'disconnect':
+               disconnect();
+               //name = data.name;
+               //log('Disconnected ' + name);
+               //update_ui();
+               break;
+             case 'join':
+               //log('Joined ' + data.name);
+               break;
+             case 'forbidden':
+               AnimateForbiddenSvg(data.text.SvgId);
+               break;
+             case 'highscore':
+               UpdateHighscore(data.text);
+               break;
+             case 'sent':
+               FillTableCell(data.text.SvgId, data.text.color);
+               break;
+           }
+         };
+         
+         conn.onclose = function() {
+         conn = null;
+         };
+         
+       }
+       
+       function disconnect() {
+         if (conn != null) {
+           conn.close();
+           conn = null;
+           alert('Connection was closed. Please refresh webpage.')
+         }
+       }
+       
+       connect()
+     });
+    </script>
+  </head>
+  <body>
+
+<svg class="map" >
+{% for nPolygonIndex, sPolygonsCoordinates in Polygons %}
+<polyline id="svg_{{nPolygonIndex}}" points="{{sPolygonsCoordinates}}" fill="white" stroke="green" stroke-width="1" />{% endfor %}  
+</svg>
+
+<canvas id="canvas" width="1400" height="600"></canvas>
+<div class="main_container">
+    <div class="menu_container">
+
+        <div class="wrapper_color_button">
+            <div class="color_button_1" class="color_button">0</div>
+            <div class="color_button_2" class="color_button">1</div>
+            <div class="color_button_3" class="color_button">2</div>
+        </div>
+        <p><span class="UserName" style="font-size:20px">{{sUser}} (<a href="/signout">signout</a>)<span></p> 
+        <span class="Highscore" style="font-size:20px">Highscore: 00000<span>
+    </div>
+</div>
+
+    <script>
+      // Don't use window.onLoad like this in production, because it can only listen to one function.
+      window.onload = function() {
+        var eventsHandler;
+
+        eventsHandler = {
+          haltEventListeners: ['touchstart', 'touchend', 'touchmove', 'touchleave', 'touchcancel']
+        , init: function(options) {
+            var instance = options.instance
+              , initialScale = 1 // 1
+              , pannedX = 0
+              , pannedY = 0
+
+            // Init Hammer
+            // Listen only for pointer and touch events
+            this.hammer = Hammer(options.svgElement, {
+              inputClass: Hammer.SUPPORT_POINTER_EVENTS ? Hammer.PointerEventInput : Hammer.TouchInput
+            })
+
+            // Enable pinch
+            this.hammer.get('pinch').set({enable: true})
+
+            // Handle double tap
+            this.hammer.on('doubletap', function(ev){
+              instance.zoomIn()
+            })
+
+            // Handle pan
+            this.hammer.on('panstart panmove', function(ev){
+              // On pan start reset panned variables
+              if (ev.type === 'panstart') {
+                pannedX = 0
+                pannedY = 0
+              }
+
+              // Pan only the difference
+              instance.panBy({x: ev.deltaX - pannedX, y: ev.deltaY - pannedY})
+              pannedX = ev.deltaX
+              pannedY = ev.deltaY
+            })
+
+            // Handle pinch
+            this.hammer.on('pinchstart pinchmove', function(ev){
+              // On pinch start remember initial zoom
+              if (ev.type === 'pinchstart') {
+                initialScale = instance.getZoom()
+                instance.zoomAtPoint(initialScale * ev.scale, {x: ev.center.x, y: ev.center.y})
+              }
+
+              instance.zoomAtPoint(initialScale * ev.scale, {x: ev.center.x, y: ev.center.y})
+            })
+
+            // Prevent moving the page on some devices when panning over SVG
+            options.svgElement.addEventListener('touchmove', function(e){ e.preventDefault(); });
+          }
+
+        , destroy: function(){
+            this.hammer.destroy()
+          }
+        }
+
+        var beforePan
+
+        beforePan = function(oldPan, newPan){
+          var stopHorizontal = false
+            , stopVertical = false
+            , gutterWidth = 200
+            , gutterHeight = 200
+              // Computed variables
+            , sizes = this.getSizes()
+            , leftLimit = -((sizes.viewBox.x + sizes.viewBox.width) * sizes.realZoom) + gutterWidth
+            , rightLimit = sizes.width - gutterWidth - (sizes.viewBox.x * sizes.realZoom)
+            , topLimit = -((sizes.viewBox.y + sizes.viewBox.height) * sizes.realZoom) + gutterHeight
+            , bottomLimit = sizes.height - gutterHeight - (sizes.viewBox.y * sizes.realZoom)
+
+          customPan = {}
+          customPan.x = Math.max(leftLimit, Math.min(rightLimit, newPan.x))
+          customPan.y = Math.max(topLimit, Math.min(bottomLimit, newPan.y))
+
+          return customPan
+        }
+        
+        // Expose to window namespace for testing purposes
+        window.panZoom = svgPanZoom('.map', {
+          zoomEnabled: true
+        , controlIconsEnabled: true
+        , fit: 1
+        , center: 1
+        , customEventsHandler: eventsHandler
+        });
+        
+        panZoom.setBeforePan(beforePan)
+                
+      };
+    </script>
+
+    <script src="{{ static('js/animation_background_canvas.js') }}"></script>
+
+  </body>
+</html>
